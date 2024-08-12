@@ -383,10 +383,7 @@ try {
 
 // or
 
-promise
-  .then((data) => {
-    // try code
-  })
+promise // try expression
   .catch((error) => {
     // catch code
   })
