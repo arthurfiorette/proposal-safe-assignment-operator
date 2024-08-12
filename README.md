@@ -1,50 +1,453 @@
-# template-for-proposals
+<br />
 
-A repository template for ECMAScript proposals.
+<h1>ECMAScript Error Safe Assignment Operator</h1>
 
-## Before creating a proposal
+<br />
 
-Please ensure the following:
-  1. You have read the [process document](https://tc39.github.io/process-document/)
-  1. You have reviewed the [existing proposals](https://github.com/tc39/proposals/)
-  1. You are aware that your proposal requires being a member of TC39, or locating a TC39 delegate to “champion” your proposal
+This proposal introduces a new operator `/*?*/=` _(Error Safe Assignment)_ that transforms the function result into a `[error, null]` tuple if the function throws an error or `[null, result]` if the function returns a value successfully. This operator also works with promises, async functions and any object that implements the [`Symbol.result`](#symbolresult) method.
 
-## Create your proposal repo
+For example, when doing any I/O operation or interacting with any Promise-based API, it can fail and **it will** fail in the most unexpected ways at runtime. Forgetting to
+handle these errors can lead to unexpected behavior and security vulnerabilities.
 
-Follow these steps:
-  1. Click the green [“use this template”](https://github.com/tc39/template-for-proposals/generate) button in the repo header. (Note: Do not fork this repo in GitHub's web interface, as that will later prevent transfer into the TC39 organization)
-  1. Update ecmarkup and the biblio to the latest version: `npm install --save-dev ecmarkup@latest && npm install --save-dev --save-exact @tc39/ecma262-biblio@latest`.
-  1. Go to your repo settings page:
-      1. Under “General”, under “Features”, ensure “Issues” is checked, and disable “Wiki”, and “Projects” (unless you intend to use Projects)
-      1. Under “Pull Requests”, check “Always suggest updating pull request branches” and “automatically delete head branches”
-      1. Under the “Pages” section on the left sidebar, and set the source to “deploy from a branch” and check “Enforce HTTPS”
-      1. Under the “Actions” section on the left sidebar, under “General”, select “Read and write permissions” under “Workflow permissions” and click “Save”
-  1. [“How to write a good explainer”][explainer] explains how to make a good first impression.
+<br />
 
-      > Each TC39 proposal should have a `README.md` file which explains the purpose
-      > of the proposal and its shape at a high level.
-      >
-      > ...
-      >
-      > The rest of this page can be used as a template ...
+- [Motivation](#motivation)
+- [Proposed features](#proposed-features)
+  - [`Symbol.result`](#symbolresult)
+  - [The safe assignment operator (`/*?*/=`)](#the-safe-assignment-operator-)
+    - [On functions](#on-functions)
+    - [On objects](#on-objects)
+  - [Recursive handling](#recursive-handling)
+  - [Promises](#promises)
+  - [`using` statement](#using-statement)
+- [Comparison](#comparison)
+- [Try/Catch is not enough](#trycatch-is-not-enough)
+- [Prior Art](#prior-art)
+- [What this proposal DOES NOT aim to solve](#what-this-proposal-does-not-aim-to-solve)
+- [Current limitations](#current-limitations)
+- [Help us to improve this proposal](#help-us-to-improve-this-proposal)
+- [Authors](#authors)
+- [Inspiration](#inspiration)
+- [License](#license)
 
-      Your explainer can point readers to the `index.html` generated from `spec.emu`
-      via markdown like
+<br />
 
-      ```markdown
-      You can browse the [ecmarkup output](https://ACCOUNT.github.io/PROJECT/)
-      or browse the [source](https://github.com/ACCOUNT/PROJECT/blob/HEAD/spec.emu).
-      ```
+## Motivation
 
-      where *ACCOUNT* and *PROJECT* are the first two path elements in your project's Github URL.
-      For example, for github.com/**tc39**/**template-for-proposals**, *ACCOUNT* is “tc39”
-      and *PROJECT* is “template-for-proposals”.
+- **Error Handling**: Simplify error handling by avoiding try-catch blocks.
+- **Readability**: Improve code readability by reducing nesting.
+- **Consistency**: Make error handling consistent across different APIs.
+- **Security**: The more easy is to handle errors, the less likely is to forget to do it.
 
+<br />
 
-## Maintain your proposal repo
+<!-- credits to https://www.youtube.com/watch?v=SloZE4i4Zfk -->
 
-  1. Make your changes to `spec.emu` (ecmarkup uses HTML syntax, but is not HTML, so I strongly suggest not naming it “.html”)
-  1. Any commit that makes meaningful changes to the spec, should run `npm run build` to verify that the build will succeed and the output looks as expected.
-  1. Whenever you update `ecmarkup`, run `npm run build` to verify that the build will succeed and the output looks as expected.
+How often have you seen code like this?
 
-  [explainer]: https://github.com/tc39/how-we-work/blob/HEAD/explainer.md
+```ts
+async function getData() {
+  const response = await fetch('https://api.example.com/data')
+  const json = await response.json()
+  return validationSchema.parse(json)
+}
+```
+
+The problem is that the above function can crash your program but doesn't feel the need to tell you about it.
+
+1. `fetch` can reject
+2. `json` can reject
+3. `parse` can throw
+4. Each of these may throw more than one type of error
+
+As such, we propose the adoption of a novel operator `/*?*/=` that allows for a more concise and readable error handling.
+
+```ts
+async function getData() {
+  const [requestError, response] ?= await fetch(
+    'https://api.example.com/data'
+  )
+
+  if (requestError) {
+    handleRequestError(requestError)
+    return
+  }
+
+  const [parseError, json] ?= await response.json()
+
+  if (parseError) {
+    handleParseError(parseError)
+    return
+  }
+
+  const [validationError, data] ?= validationSchema.parse(json)
+
+  if (validationError) {
+    handleValidationError(validationError)
+    return
+  }
+
+  return data
+}
+```
+
+<br />
+
+Please read the [what this proposal DOES NOT aim to solve](#what-this-proposal-does-not-aim-to-solve) section to understand the limitations of this proposal.
+
+<br />
+
+## Proposed features
+
+Below is a list of features that this proposal aims to introduce:
+
+### `Symbol.result`
+
+Any object that implements the `Symbol.result` method can be used with the `/*?*/=` operator.
+
+```ts
+class Division {
+  // ...
+
+  [Symbol.result]() {
+    if (this.denominator === 0) {
+      return [new Error('Division by zero'), null]
+    }
+
+    return [null, this.numerator / this.denominator]
+  }
+}
+
+const [error, result] ?= new Division(1, 0)
+// const [error, result] = divide[Symbol.result]()
+
+// error is Error('Division by zero')
+```
+
+The return of the `Symbol.result` method must be a tuple with the first element being the error and the second element being the result.
+
+<br />
+
+### The safe assignment operator (`/*?*/=`)
+
+The `/*?*/=` operator calls the `Symbol.result` method of the object or function on the right side of the operator.
+
+```ts
+const obj = {
+  [Symbol.result]() {
+    return [new Error('Error'), null]
+  }
+}
+
+const [error, data] ?= obj
+// const [error, data] = obj[Symbol.result]()
+```
+
+```ts
+function action() {
+  return [null, 'data']
+}
+
+const [error, data] ?= action(argument)
+// const [error, data] = action[Symbol.result](argument)
+```
+
+The result should match the format of `[error, null | undefined]` or `[null, data]`.
+
+#### On functions
+
+If the `/*?*/=` operator is used in a function, all used parameters are passed to the `Symbol.result` method.
+
+```ts
+declare function action(argument: string): string
+
+const [error, data] /*?*/= action(argument1, argument2, ...)
+// const [error, data] = action[Symbol.result](argument, argument2, ...)
+```
+
+#### On objects
+
+If the `/*?*/=` operator is used in an object, nothing is passed to the `Symbol.result` method as parameters.
+
+```ts
+declare const obj: { [Symbol.result]: unknown }
+
+const [error, data] ?= obj
+// const [error, data] = obj[Symbol.result]()
+```
+
+<br />
+
+### Recursive handling
+
+The `[error, null]` tuple is generated in the first error thrown, however, if the `data` in `[null, data]` also contains a `Symbol.result` method, it will be called recursively.
+
+```ts
+const obj = {
+  [Symbol.result]() {
+    return [
+      null,
+      {
+        [Symbol.result]() {
+          return [new Error('Error'), null]
+        }
+      }
+    ]
+  }
+}
+
+const [error, data] ?= obj
+// const [error, data] = obj[Symbol.result]
+
+// error is  Error('string')
+```
+
+This behaviors helps to handle all situations with returning promises or objects with `Symbol.result` methods.
+
+- `async function(): Promise<T>`
+- `function(): T`
+- `function(): T | Promise<T>`
+
+These cases may go from 0 to 2 levels of objects with `Symbol.result` methods, all of them should be handled correctly.
+
+<br />
+
+### Promises
+
+A Promise is the only other implementation besides `Function` that can be used with the `/*?*/=` operator.
+
+```ts
+const promise = getPromise()
+const [error, data] ?= await promise
+// const [error, data] = await promise[Symbol.result]()
+```
+
+You may have noticed that we might have the usecase of `await` and `/*?*/=` together, and that's fine. Since there's a [recursive handling](#recursive-handling), there's no problem in using them together.
+
+```ts
+const [error, data] ?= await getPromise()
+// const [error, data] = await getPromise[Symbol.result]()
+```
+
+Where the execution will follow this order
+
+1. `getPromise[Symbol.result]()` might throw an error when being called (if it's a sync function that returns a promise)
+2. If the error was thrown, it will be assigned to `error` and the execution will stop
+3. If the error was not thrown, the result will be assigned to `data`, since `data` is a promise, and promises have a `Symbol.result` method, it will be recursively handled
+4. If the promise rejects, the error will be assigned to `error` and the execution will stop
+5. If the promise resolves, the result will be assigned to `data`
+
+<br />
+
+### `using` statement
+
+The `using` or `await using` statement should also work with the `/*?*/=` operator. Everything using does in a normal `using x = y` statement should be done with the `/*?*/=` operator.
+
+```ts
+try {
+  using a = b
+} catch(error) {
+  // handle
+}
+
+// now becomes
+using [error, a] /*?*/= b
+
+// or with async
+
+try {
+  await using a = b
+} catch(error) {
+  // handle
+}
+
+// now becomes
+await using [error, a] /*?*/= b
+```
+
+Where the `using management flow` is only applied when `error` is `null | undefined` and `a` is truthy and has a `Symbol.dispose` method.
+
+<br />
+
+## Comparison
+
+The `/*?*/=` neither `Symbol.result` proposal introduces new logic to the language, in fact we can already reproduce everything that this proposal does with the current, _but verbose and forgetful_, language features:
+
+```ts
+try {
+  // try expression
+} catch (error) {
+  // catch code
+}
+
+// or
+
+promise
+  .then((data) => {
+    // try code
+  })
+  .catch((error) => {
+    // catch code
+  })
+```
+
+is equivalent to:
+
+```ts
+const [error, data] ?= expression
+
+if (error) {
+  // catch code
+} else {
+  // try code
+}
+```
+
+<br />
+
+## Try/Catch is not enough
+
+<!-- credits to https://x.com/LeaVerou/status/1819381809773216099 -->
+
+The `try {}` block is rarely useful, since its scoping is not conceptually meaningful.
+
+Effectively, it's more of a code annotation than control flow. Unlike control flow blocks, there is no program state that only makes sense within a `try {}` block.
+
+The `catch {}` block on the other hand **is** actual control flow, and scoping makes complete sense there.
+
+Using `try/catch` blocks has **two main syntax problems**:
+
+```js
+// Nests 1 level for each error handling block
+async function readData(filename) {
+  try {
+    const fileContent = await fs.readFile(filename, 'utf8')
+
+    try {
+      const json = JSON.parse(fileContent)
+
+      return json.data
+    } catch (error) {
+      handleJsonError(error)
+      return
+    }
+  } catch (error) {
+    handleFileError(error)
+    return
+  }
+}
+
+// Declares reassignable variables outside the block which is undesirable
+async function readData(filename) {
+  let fileContent
+  let json
+
+  try {
+    fileContent = await fs.readFile(filename, 'utf8')
+  } catch (error) {
+    handleFileError(error)
+    return
+  }
+
+  try {
+    json = JSON.parse(fileContent)
+  } catch (error) {
+    handleJsonError(error)
+    return
+  }
+
+  return json.data
+}
+```
+
+<br />
+
+## Prior Art
+
+As we can see, this so loved pattern is already present in many languages:
+
+- Go
+  - [Error handling](https://go.dev/blog/error-handling-and-go)
+- Rust
+  - [`?` operator](https://doc.rust-lang.org/rust-by-example/error/result/enter_question_mark.html#introducing-)
+  - [`Result` type](https://doc.rust-lang.org/rust-by-example/error/result.html#result)
+- Swift
+  - [The `try?` operator](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/errorhandling/#Converting-Errors-to-Optional-Values)
+- Zig
+  - [`try` keyword](https://ziglang.org/documentation/0.10.1/#try)
+- _And many others..._
+
+<br />
+## What this proposal DOES NOT aim to solve
+
+- **Handle errors for you**: This proposal aims to facilitate error handling, however you must still write the code to handle it, the proposal just makes it easier to do so.
+
+- **Error handling strategies**: This proposal does not aim to define how you should handle errors, it just makes it harder to forget to not handle errors.
+
+- **Marking functions as error-prone/safe**: This proposal does not provides a way to declare your functions as error-prone or error-safe, in the same way Javascript also currently does not. It just provides a syntax to handle these errors in a more concise way.
+
+<br />
+
+## Current limitations
+
+While this proposal is in its early stages, there are some limitations or TBD that we are aware of:
+
+- We need a nomenclature for objects/functions with `Symbol.result` methods. _Resultable_? _Errorable_? We need to define this.
+
+- No `this` usage tested or declared yet. Documentation about it needs to be written.
+
+- There's no syntax improvement for handling `finally` blocks **YET**, however, you can still use the `finally` block as you would normally do:
+
+```ts
+try {
+  // try code
+} catch {
+  // catch errors
+} finally {
+  // finally code
+}
+
+// Needs to be done as follows
+
+const [error, data] ?= action()
+
+try {
+  if (error) {
+    // catch errors
+  } else {
+    // try code
+  }
+} finally {
+  // finally code
+}
+```
+
+<br />
+
+## Help us to improve this proposal
+
+This proposal is in its early stages and we need your help to improve it. Please feel free to open an issue or a pull request with your suggestions.
+
+**_Any contribution is welcome!_**
+
+<br />
+
+## Authors
+
+- [Arthur Fiorette](https://github.com/arthurfiorette)
+
+<br />
+
+## Inspiration
+
+- This tweet from @LaraVerou: https://x.com/LeaVerou/status/1819381809773216099
+- Effect TS Error management: https://effect.website/docs/guides/error-management
+- The [`tuple-it`](https://www.npmjs.com/package/tuple-it) npm package, which introduces a very similar concept, but often adds properties to `Promise` and `Function` prototypes, which is not ideal.
+
+<br />
+
+## License
+
+This proposal is licensed under the [MIT License](./LICENSE).
+
+<br />
