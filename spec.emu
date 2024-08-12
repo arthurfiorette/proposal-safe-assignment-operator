@@ -4,36 +4,98 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/github.min.css">
 <script src="./spec.js"></script>
 <pre class="metadata">
-title: Proposal Title Goes Here
+title: ECMAScript Error Safe Assignment Operator
 stage: -1
-contributors: Your Name(s) Here
+contributors: Arthur Fiorette
 </pre>
 
-<emu-clause id="sec-demo-clause">
-  <h1>This is an emu-clause</h1>
-  <p>This is an algorithm:</p>
-  <emu-alg>
-    1. Let _proposal_ be *undefined*.
-    1. If IsAccepted(_proposal_) is *true*, then
-      1. Let _stage_ be *0*<sub>ℤ</sub>.
-    1. Else,
-      1. Let _stage_ be *-1*<sub>ℤ</sub>.
-    1. Return ? ToString(_stage_).
-  </emu-alg>
-</emu-clause>
+<emu-biblio href="node_modules/@tc39/ecma262-biblio/biblio.json"></emu-biblio>
 
-<emu-clause id="sec-is-accepted" type="abstract operation">
-  <h1>
-      IsAccepted (
-        _proposal_: an ECMAScript language value
-      ): a Boolean
-  </h1>
-  <dl class="header">
-    <dt>description</dt>
-    <dd>Tells you if the proposal was accepted</dd>
-  </dl>
-  <emu-alg>
-    1. If _proposal_ is not a String, or is not accepted, return *false*.
-    1. Return *true*.
-  </emu-alg>
+<emu-intro id="intro">
+  <h1>Introduction</h1>
+  <p>This proposal introduces syntax and semantics for error safe assignments</p>
+</emu-intro>
+
+<emu-clause id="sec-ecmascript-data-types-and-values" aoid="Type">
+  <h1>ECMAScript Data Types and Values</h1>
+  <emu-clause id="sec-ecmascript-language-types">
+    <h1>ECMAScript Language Types</h1>
+    <emu-clause id="sec-ecmascript-language-types-symbol-type">
+      <h1>The Symbol Type</h1>
+      <emu-clause id="sec-well-known-symbols">
+        <h1>Well-Known Symbols</h1>
+        <emu-table id="table-1" caption="Well-known Symbols">
+          <table>
+            <tbody>
+            <tr>
+              <th>
+                Specification Name
+              </th>
+              <th>
+                [[Description]]
+              </th>
+              <th>
+                Value and Purpose
+              </th>
+            </tr>
+            <tr>
+              <td>
+                <ins>@@result</ins>
+              </td>
+              <td>
+                <ins>`"Symbol.result"`</ins>
+              </td>
+              <td>
+                <ins>A method that wraps function call result into a tuple array. Called by the semantics of `?=` operator and `ResultableStack` objects.</ins>
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </emu-table>
+      </emu-clause>
+    </emu-clause>
+    <emu-clause id="sec-object-type">
+      <h1>The Object Type</h1>
+      <emu-clause id="sec-well-known-intrinsic-objects">
+        <h1>Well-Known Intrinsic Objects</h1>
+        <emu-table id="table-well-known-intrinsic-objects" caption="Well-Known Intrinsic Objects" oldids="table-7">
+          <table>
+            <tr>
+              <th>
+                Intrinsic Name
+              </th>
+              <th>
+                Global Name
+              </th>
+              <th>
+                ECMAScript Language Association
+              </th>
+            </tr>
+            <tr>
+              <td>
+                %Function%
+              </td>
+              <td>
+                `Function`
+              </td>
+              <td>
+                The Function constructor (<emu-xref href="#sec-function-constructor"></emu-xref>)
+              </td>
+            </tr>
+            <tr>
+              <td>
+                %Promise%
+              </td>
+              <td>
+                `Promise`
+              </td>
+              <td>
+                The Promise object (<emu-xref href="#sec-promise-objects"></emu-xref>)
+              </td>
+            </tr>
+          </table>
+        </emu-table>
+      </emu-clause>
+    </emu-clause>
+  </emu-clause>
 </emu-clause>
