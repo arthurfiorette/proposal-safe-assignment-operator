@@ -1,27 +1,37 @@
 <br />
 
-<h1>ECMAScript Error Safe Assignment Operator</h1>
+<h1>ECMAScript Safe Assignment Operator</h1>
+
+> [!WARNING]  
+> This proposal is actively being developed and [any help is welcome](#help-us-to-improve-this-proposal).
 
 <br />
 
-This proposal introduces a new operator `/*?*/=` _(Error Safe Assignment)_ that transforms the function result into a `[error, null]` tuple if the function throws an error or `[null, result]` if the function returns a value successfully. This operator also works with promises, async functions and any object that implements the [`Symbol.result`](#symbolresult) method.
+This proposal introduces a new operator `?=` _(Safe Assignment)_ that transforms the function result into a `[error, null]` tuple if the function throws an error or `[null, result]` if the function returns a value successfully. This operator also works with promises, async functions and any object that implements the [`Symbol.result`](#symbolresult) method.
 
 For example, when doing any I/O operation or interacting with any Promise-based API, it can fail and **it will** fail in the most unexpected ways at runtime. Forgetting to
 handle these errors can lead to unexpected behavior and security vulnerabilities.
 
 <br />
 
+```ts
+const [error, response] ?= await fetch("https://arthur.place")
+```
+
+<hr />
+<br />
+
 - [Motivation](#motivation)
 - [Proposed features](#proposed-features)
   - [`Symbol.result`](#symbolresult)
-  - [The safe assignment operator (`/*?*/=`)](#the-safe-assignment-operator-)
+  - [The safe assignment operator (`?=`)](#the-safe-assignment-operator-)
     - [On functions](#on-functions)
     - [On objects](#on-objects)
   - [Recursive handling](#recursive-handling)
   - [Promises](#promises)
   - [`using` statement](#using-statement)
-- [Comparison](#comparison)
 - [Try/Catch is not enough](#trycatch-is-not-enough)
+- [Comparison](#comparison)
 - [Prior Art](#prior-art)
 - [What this proposal DOES NOT aim to solve](#what-this-proposal-does-not-aim-to-solve)
 - [Current limitations](#current-limitations)
@@ -37,7 +47,7 @@ handle these errors can lead to unexpected behavior and security vulnerabilities
 - **Error Handling**: Simplify error handling by avoiding try-catch blocks.
 - **Readability**: Improve code readability by reducing nesting.
 - **Consistency**: Make error handling consistent across different APIs.
-- **Security**: The more easy is to handle errors, the less likely is to forget to do it.
+- **Security**: Make it harder to forget to handle errors.
 
 <br />
 
@@ -47,7 +57,7 @@ How often have you seen code like this?
 
 ```ts
 async function getData() {
-  const response = await fetch('https://api.example.com/data')
+  const response = await fetch("https://api.example.com/data")
   const json = await response.json()
   return validationSchema.parse(json)
 }
@@ -60,7 +70,7 @@ The problem is that the above function can crash your program but doesn't feel t
 3. `parse` can throw
 4. Each of these may throw more than one type of error
 
-As such, we propose the adoption of a novel operator `/*?*/=` that allows for a more concise and readable error handling.
+As such, we propose the adoption of a novel operator `?=` that allows for a more concise and readable error handling.
 
 ```ts
 async function getData() {
@@ -101,9 +111,11 @@ Please read the [what this proposal DOES NOT aim to solve](#what-this-proposal-d
 
 Below is a list of features that this proposal aims to introduce:
 
+<br />
+
 ### `Symbol.result`
 
-Any object that implements the `Symbol.result` method can be used with the `/*?*/=` operator.
+Any object that implements the `Symbol.result` method can be used with the `?=` operator.
 
 ```ts
 class Division {
@@ -128,9 +140,9 @@ The return of the `Symbol.result` method must be a tuple with the first element 
 
 <br />
 
-### The safe assignment operator (`/*?*/=`)
+### The safe assignment operator (`?=`)
 
-The `/*?*/=` operator calls the `Symbol.result` method of the object or function on the right side of the operator.
+The `?=` operator calls the `Symbol.result` method of the object or function on the right side of the operator.
 
 ```ts
 const obj = {
@@ -156,18 +168,18 @@ The result should match the format of `[error, null | undefined]` or `[null, dat
 
 #### On functions
 
-If the `/*?*/=` operator is used in a function, all used parameters are passed to the `Symbol.result` method.
+If the `?=` operator is used in a function, all used parameters are passed to the `Symbol.result` method.
 
 ```ts
 declare function action(argument: string): string
 
-const [error, data] /*?*/= action(argument1, argument2, ...)
+const [error, data] ?= action(argument1, argument2, ...)
 // const [error, data] = action[Symbol.result](argument, argument2, ...)
 ```
 
 #### On objects
 
-If the `/*?*/=` operator is used in an object, nothing is passed to the `Symbol.result` method as parameters.
+If the `?=` operator is used in an object, nothing is passed to the `Symbol.result` method as parameters.
 
 ```ts
 declare const obj: { [Symbol.result]: unknown }
@@ -214,7 +226,7 @@ These cases may go from 0 to 2 levels of objects with `Symbol.result` methods, a
 
 ### Promises
 
-A Promise is the only other implementation besides `Function` that can be used with the `/*?*/=` operator.
+A Promise is the only other implementation besides `Function` that can be used with the `?=` operator.
 
 ```ts
 const promise = getPromise()
@@ -222,7 +234,7 @@ const [error, data] ?= await promise
 // const [error, data] = await promise[Symbol.result]()
 ```
 
-You may have noticed that we might have the usecase of `await` and `/*?*/=` together, and that's fine. Since there's a [recursive handling](#recursive-handling), there's no problem in using them together.
+You may have noticed that we might have the usecase of `await` and `?=` together, and that's fine. Since there's a [recursive handling](#recursive-handling), there's no problem in using them together.
 
 ```ts
 const [error, data] ?= await getPromise()
@@ -241,7 +253,7 @@ Where the execution will follow this order
 
 ### `using` statement
 
-The `using` or `await using` statement should also work with the `/*?*/=` operator. Everything using does in a normal `using x = y` statement should be done with the `/*?*/=` operator.
+The `using` or `await using` statement should also work with the `?=` operator. Everything using does in a normal `using x = y` statement should be done with the `?=` operator.
 
 ```ts
 try {
@@ -251,7 +263,7 @@ try {
 }
 
 // now becomes
-using [error, a] /*?*/= b
+using [error, a] ?= b
 
 // or with async
 
@@ -262,16 +274,73 @@ try {
 }
 
 // now becomes
-await using [error, a] /*?*/= b
+await using [error, a] ?= b
 ```
 
 Where the `using management flow` is only applied when `error` is `null | undefined` and `a` is truthy and has a `Symbol.dispose` method.
 
 <br />
 
+## Try/Catch is not enough
+
+<!-- credits to https://x.com/LeaVerou/status/1819381809773216099 -->
+
+The `try {}` block is rarely useful, since its scoping is not conceptually meaningful.
+
+Effectively, it's more of a code annotation than control flow. Unlike control flow blocks, there is no program state that only makes sense within a `try {}` block.
+
+The `catch {}` block on the other hand **is** actual control flow, and scoping makes complete sense there.
+
+Using `try/catch` blocks has **two main syntax problems**:
+
+```js
+// Nests 1 level for each error handling block
+async function readData(filename) {
+  try {
+    const fileContent = await fs.readFile(filename, "utf8")
+
+    try {
+      const json = JSON.parse(fileContent)
+
+      return json.data
+    } catch (error) {
+      handleJsonError(error)
+      return
+    }
+  } catch (error) {
+    handleFileError(error)
+    return
+  }
+}
+
+// Declares reassignable variables outside the block which is undesirable
+async function readData(filename) {
+  let fileContent
+  let json
+
+  try {
+    fileContent = await fs.readFile(filename, "utf8")
+  } catch (error) {
+    handleFileError(error)
+    return
+  }
+
+  try {
+    json = JSON.parse(fileContent)
+  } catch (error) {
+    handleJsonError(error)
+    return
+  }
+
+  return json.data
+}
+```
+
+<br />
+
 ## Comparison
 
-The `/*?*/=` neither `Symbol.result` proposal introduces new logic to the language, in fact we can already reproduce everything that this proposal does with the current, _but verbose and forgetful_, language features:
+The `?=` neither `Symbol.result` proposal introduces new logic to the language, in fact we can already reproduce everything that this proposal does with the current, _but verbose and forgetful_, language features:
 
 ```ts
 try {
@@ -305,63 +374,6 @@ if (error) {
 
 <br />
 
-## Try/Catch is not enough
-
-<!-- credits to https://x.com/LeaVerou/status/1819381809773216099 -->
-
-The `try {}` block is rarely useful, since its scoping is not conceptually meaningful.
-
-Effectively, it's more of a code annotation than control flow. Unlike control flow blocks, there is no program state that only makes sense within a `try {}` block.
-
-The `catch {}` block on the other hand **is** actual control flow, and scoping makes complete sense there.
-
-Using `try/catch` blocks has **two main syntax problems**:
-
-```js
-// Nests 1 level for each error handling block
-async function readData(filename) {
-  try {
-    const fileContent = await fs.readFile(filename, 'utf8')
-
-    try {
-      const json = JSON.parse(fileContent)
-
-      return json.data
-    } catch (error) {
-      handleJsonError(error)
-      return
-    }
-  } catch (error) {
-    handleFileError(error)
-    return
-  }
-}
-
-// Declares reassignable variables outside the block which is undesirable
-async function readData(filename) {
-  let fileContent
-  let json
-
-  try {
-    fileContent = await fs.readFile(filename, 'utf8')
-  } catch (error) {
-    handleFileError(error)
-    return
-  }
-
-  try {
-    json = JSON.parse(fileContent)
-  } catch (error) {
-    handleJsonError(error)
-    return
-  }
-
-  return json.data
-}
-```
-
-<br />
-
 ## Prior Art
 
 As we can see, this so loved pattern is already present in many languages:
@@ -378,6 +390,7 @@ As we can see, this so loved pattern is already present in many languages:
 - _And many others..._
 
 <br />
+
 ## What this proposal DOES NOT aim to solve
 
 - **Handle errors for you**: This proposal aims to facilitate error handling, however you must still write the code to handle it, the proposal just makes it easier to do so.
@@ -434,15 +447,16 @@ This proposal is in its early stages and we need your help to improve it. Please
 
 ## Authors
 
-- [Arthur Fiorette](https://github.com/arthurfiorette)
+- [Arthur Fiorette](https://github.com/arthurfiorette) <sub>([Twitter](https://x.com/arthurfiorette))</sub>
 
 <br />
 
 ## Inspiration
 
-- This tweet from @LaraVerou: https://x.com/LeaVerou/status/1819381809773216099
-- Effect TS Error management: https://effect.website/docs/guides/error-management
+- [This tweet from @LaraVerou](https://x.com/LeaVerou/status/1819381809773216099)
+- [Effect TS Error management](https://effect.website/docs/guides/error-management)
 - The [`tuple-it`](https://www.npmjs.com/package/tuple-it) npm package, which introduces a very similar concept, but often adds properties to `Promise` and `Function` prototypes, which is not ideal.
+- The easiness of forgetting to handle errors in Javascript code.
 
 <br />
 

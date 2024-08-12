@@ -1,5 +1,5 @@
 //
-// Proposal: Error-Safe Assignments
+// Proposal: Safe Assignments
 //
 // Be able to handle errors in assignments without throwing exceptions, in a
 // easier way and without let variables + nesting try/catch blocks.

@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.4/styles/github.min.css">
 <script src="./spec.js"></script>
 <pre class="metadata">
-title: ECMAScript Error Safe Assignment Operator
+title: ECMAScript Safe Assignment Operator
 stage: -1
 contributors: Arthur Fiorette
 </pre>
@@ -13,7 +13,7 @@ contributors: Arthur Fiorette
 
 <emu-intro id="intro">
   <h1>Introduction</h1>
-  <p>This proposal introduces syntax and semantics for error safe assignments</p>
+  <p>This proposal introduces syntax and semantics for safe assignments</p>
 </emu-intro>
 
 <emu-clause id="sec-ecmascript-data-types-and-values" aoid="Type">
