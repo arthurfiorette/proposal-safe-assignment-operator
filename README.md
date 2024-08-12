@@ -209,7 +209,7 @@ const obj = {
 }
 
 const [error, data] ?= obj
-// const [error, data] = obj[Symbol.result]
+// const [error, data] = obj[Symbol.result]()
 
 // error is  Error('string')
 ```
