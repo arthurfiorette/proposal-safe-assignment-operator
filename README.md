@@ -30,9 +30,11 @@ const [error, response] ?= await fetch("https://arthur.place")
   - [Recursive handling](#recursive-handling)
   - [Promises](#promises)
   - [`using` statement](#using-statement)
+- [Pollyfilling](#pollyfilling)
+- [Using `?=` on functions and objects without `Symbol.result`](#using--on-functions-and-objects-without-symbolresult)
 - [Try/Catch is not enough](#trycatch-is-not-enough)
 - [Comparison](#comparison)
-- [Prior Art](#prior-art)
+- [Similar Prior Art](#similar-prior-art)
 - [What this proposal DOES NOT aim to solve](#what-this-proposal-does-not-aim-to-solve)
 - [Current limitations](#current-limitations)
 - [Help us to improve this proposal](#help-us-to-improve-this-proposal)
@@ -118,22 +120,18 @@ Below is a list of features that this proposal aims to introduce:
 Any object that implements the `Symbol.result` method can be used with the `?=` operator.
 
 ```ts
-class Division {
-  // ...
-
-  [Symbol.result]() {
-    if (this.denominator === 0) {
-      return [new Error('Division by zero'), null]
+function example() {
+  return {
+    [Symbol.result]() {
+      return [new Error('123'), null]
     }
-
-    return [null, this.numerator / this.denominator]
   }
 }
 
-const [error, result] ?= new Division(1, 0)
-// const [error, result] = divide[Symbol.result]()
+const [error, result] ?= example() // Function.prototype also implements Symbol.result
+// const [error, result] = example[Symbol.result]()
 
-// error is Error('Division by zero')
+// error is Error('123')
 ```
 
 The return of the `Symbol.result` method must be a tuple with the first element being the error and the second element being the result.
@@ -255,6 +253,8 @@ Where the execution will follow this order
 
 The `using` or `await using` statement should also work with the `?=` operator. Everything using does in a normal `using x = y` statement should be done with the `?=` operator.
 
+Errors thrown when the disposable resource is disposed aren't caught by the `?=` operator, in the same way they aren't caught currently by any other feature.
+
 ```ts
 try {
   using a = b
@@ -278,6 +278,38 @@ await using [error, a] ?= b
 ```
 
 Where the `using management flow` is only applied when `error` is `null | undefined` and `a` is truthy and has a `Symbol.dispose` method.
+
+<br />
+
+## Pollyfilling
+
+This whole proposal can be pollifilled with the code at [`pollyfill.js`](./pollyfill.js).
+
+However the `?=` operator can't be pollifilled, so when targetting older JS environemnts, a post-processor should be used to transform the `?=` into the respective `[Symbol.result]` calls.
+
+```ts
+const [error, data] ?= await asyncAction(arg1, arg2)
+// should become
+const [error, data] = await asyncAction[Symbol.result](arg1, arg2)
+```
+
+```ts
+const [error, data] ?= action()
+// should become
+const [error, data] = action[Symbol.result]()
+```
+
+```ts
+const [error, data] ?= obj
+// should become
+const [error, data] = obj[Symbol.result]()
+```
+
+<br />
+
+## Using `?=` on functions and objects without `Symbol.result`
+
+If the function or object does not have a `Symbol.result` method, the `?=` operator should throw a `TypeError`.
 
 <br />
 
@@ -374,9 +406,9 @@ if (error) {
 
 <br />
 
-## Prior Art
+## Similar Prior Art
 
-As we can see, this so loved pattern is already present in many languages:
+This lovely pattern is architecturally present in many languages:
 
 - Go
   - [Error handling](https://go.dev/blog/error-handling-and-go)
@@ -389,15 +421,15 @@ As we can see, this so loved pattern is already present in many languages:
   - [`try` keyword](https://ziglang.org/documentation/0.10.1/#try)
 - _And many others..._
 
+We can't expect this proposal to offer the same level of type safety or strictness as these languages, since this is a dynamic language and the `throw` statement can throw anything, however, we can still make it easier to handle errors in a more consistent way.
+
 <br />
 
 ## What this proposal DOES NOT aim to solve
 
+- **Strictly type errors**: The `throw` statement can thrown anything. This proposal respects that principle and does not enforce any type safety on the error handling side. This proposal won't introduce any types to the language and neither be extended to typescript. See [microsoft/typescript#13219](https://github.com/Microsoft/TypeScript/issues/13219) for more information.
+
 - **Handle errors for you**: This proposal aims to facilitate error handling, however you must still write the code to handle it, the proposal just makes it easier to do so.
-
-- **Error handling strategies**: This proposal does not aim to define how you should handle errors, it just makes it harder to forget to not handle errors.
-
-- **Marking functions as error-prone/safe**: This proposal does not provides a way to declare your functions as error-prone or error-safe, in the same way Javascript also currently does not. It just provides a syntax to handle these errors in a more concise way.
 
 <br />
 
