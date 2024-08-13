@@ -155,7 +155,7 @@ const [error, data] ?= obj
 
 ```ts
 function action() {
-  return [null, 'data']
+  return 'data'
 }
 
 const [error, data] ?= action(argument)
@@ -180,7 +180,7 @@ const [error, data] ?= action(argument1, argument2, ...)
 If the `?=` operator is used in an object, nothing is passed to the `Symbol.result` method as parameters.
 
 ```ts
-declare const obj: { [Symbol.result]: unknown }
+declare const obj: { [Symbol.result]: () => any }
 
 const [error, data] ?= obj
 // const [error, data] = obj[Symbol.result]()
