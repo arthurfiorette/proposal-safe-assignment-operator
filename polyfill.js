@@ -2,11 +2,11 @@ Symbol.result = Symbol("result")
 
 Function.prototype[Symbol.result] = function (...args) {
   try {
-    const result = this(args)
+    const result = this.apply(this, args)
 
     // Handles recursive cases, like async function() {}
     // or user made implementations like function() { return objectWithSymbolResult }
-    if (Symbol.result in result) {
+    if (result && typeof result === "object" && Symbol.result in result) {
       return result[Symbol.result]()
     }
 
@@ -14,22 +14,15 @@ Function.prototype[Symbol.result] = function (...args) {
   } catch (error) {
     // throw undefined would break the pattern of destructuring the result type.
     // in [error, data], both error and data would be undefined
-    if (!error) {
-      return [new Error("Thrown error is falsy")]
-    }
-
-    return [error]
+    return [error || new Error("Thrown error is falsy")]
   }
 }
 
 Promise.prototype[Symbol.result] = async function () {
   try {
-    return [null, await this]
+    const result = await this
+    return [null, result]
   } catch (error) {
-    if (!error) {
-      return [new Error("Thrown error is falsy")]
-    }
-
-    return [error]
+    return [error || new Error("Thrown error is falsy")]
   }
 }
