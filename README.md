@@ -30,9 +30,10 @@ const [error, response] ?= await fetch("https://arthur.place")
   - [Recursive handling](#recursive-handling)
   - [Promises](#promises)
   - [`using` statement](#using-statement)
+- [Try/Catch is not enough](#trycatch-is-not-enough)
+- [Why not `data` first?](#why-not-data-first)
 - [Pollyfilling](#pollyfilling)
 - [Using `?=` on functions and objects without `Symbol.result`](#using--on-functions-and-objects-without-symbolresult)
-- [Try/Catch is not enough](#trycatch-is-not-enough)
 - [Comparison](#comparison)
 - [Similar Prior Art](#similar-prior-art)
 - [What this proposal DOES NOT aim to solve](#what-this-proposal-does-not-aim-to-solve)
@@ -77,7 +78,7 @@ As such, we propose the adoption of a novel operator `?=` that allows for a more
 ```ts
 async function getData() {
   const [requestError, response] ?= await fetch(
-    'https://api.example.com/data'
+    "https://api.example.com/data"
   )
 
   if (requestError) {
@@ -123,8 +124,8 @@ Any object that implements the `Symbol.result` method can be used with the `?=` 
 function example() {
   return {
     [Symbol.result]() {
-      return [new Error('123'), null]
-    }
+      return [new Error("123"), null]
+    },
   }
 }
 
@@ -145,8 +146,8 @@ The `?=` operator calls the `Symbol.result` method of the object or function on 
 ```ts
 const obj = {
   [Symbol.result]() {
-    return [new Error('Error'), null]
-  }
+    return [new Error("Error"), null]
+  },
 }
 
 const [error, data] ?= obj
@@ -199,11 +200,11 @@ const obj = {
       null,
       {
         [Symbol.result]() {
-          return [new Error('Error'), null]
-        }
-      }
+          return [new Error("Error"), null]
+        },
+      },
     ]
-  }
+  },
 }
 
 const [error, data] ?= obj
@@ -281,38 +282,6 @@ Where the `using management flow` is only applied when `error` is `null | undefi
 
 <br />
 
-## Pollyfilling
-
-This whole proposal can be pollifilled with the code at [`pollyfill.js`](./pollyfill.js).
-
-However the `?=` operator can't be pollifilled, so when targetting older JS environemnts, a post-processor should be used to transform the `?=` into the respective `[Symbol.result]` calls.
-
-```ts
-const [error, data] ?= await asyncAction(arg1, arg2)
-// should become
-const [error, data] = await asyncAction[Symbol.result](arg1, arg2)
-```
-
-```ts
-const [error, data] ?= action()
-// should become
-const [error, data] = action[Symbol.result]()
-```
-
-```ts
-const [error, data] ?= obj
-// should become
-const [error, data] = obj[Symbol.result]()
-```
-
-<br />
-
-## Using `?=` on functions and objects without `Symbol.result`
-
-If the function or object does not have a `Symbol.result` method, the `?=` operator should throw a `TypeError`.
-
-<br />
-
 ## Try/Catch is not enough
 
 <!-- credits to https://x.com/LeaVerou/status/1819381809773216099 -->
@@ -370,6 +339,72 @@ async function readData(filename) {
 
 <br />
 
+## Why not `data` first?
+
+That's the way go does it, right? Yes, but that's the only way we are supposed to call a function in Go. In Javascript, we can already just `const data = fn()` and ignore the error, which is the main problem we are trying to solve.
+
+If some is using `?=` as their assignment operator, is because they do not wan't to forget to handle the error. Putting data first is the opposite of this principle.
+
+```ts
+// ignores errors!
+const data = fn()
+
+// Look how simple it is to forget to handle the error
+const [data] ?= fn()
+
+// This is the way to go
+const [error, data] ?= fn()
+```
+
+Also, if you want to suppress the error (which is **different** from ignoring the possibility of a function throw an error), you can just do the following:
+
+```ts
+// This suppresses the error (ignores it and doesn't throw it back)
+const [, data] ?= fn()
+```
+
+Which is much more explicit and readable for the fact that you acknowledge that there's might be an error, but you do not care about it.
+
+The above approach is also known as "try catch calaboca" _(in Brazilian terms)_ and can be rewritten as:
+
+```ts
+let data
+try {
+  data = fn()
+} catch {}
+```
+
+## Pollyfilling
+
+This whole proposal can be pollifilled with the code at [`pollyfill.js`](./pollyfill.js).
+
+However the `?=` operator can't be pollifilled, so when targetting older JS environemnts, a post-processor should be used to transform the `?=` into the respective `[Symbol.result]` calls.
+
+```ts
+const [error, data] ?= await asyncAction(arg1, arg2)
+// should become
+const [error, data] = await asyncAction[Symbol.result](arg1, arg2)
+```
+
+```ts
+const [error, data] ?= action()
+// should become
+const [error, data] = action[Symbol.result]()
+```
+
+```ts
+const [error, data] ?= obj
+// should become
+const [error, data] = obj[Symbol.result]()
+```
+
+<br />
+
+## Using `?=` on functions and objects without `Symbol.result`
+
+If the function or object does not have a `Symbol.result` method, the `?=` operator should throw a `TypeError`.
+
+<br />
 ## Comparison
 
 The `?=` neither `Symbol.result` proposal introduces new logic to the language, in fact we can already reproduce everything that this proposal does with the current, _but verbose and forgetful_, language features:
