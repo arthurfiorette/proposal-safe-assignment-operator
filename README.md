@@ -1,9 +1,14 @@
 <br />
 
+> [!IMPORTANT]  
+> [Vote on our poll to decide which syntax to use](https://x.com/arthurfiorette/status/1823901476260844023)
+
+<br />
+
 <h1>ECMAScript Safe Assignment Operator Proposal</h1>
 
 > [!WARNING]  
-> This proposal is actively under development, and [contributions are welcome](#help-us-to-improve-this-proposal).
+> This proposal is actively under development, and [contributions are welcome](#help-us-improve-this-proposal).
 
 <br />
 
