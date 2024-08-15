@@ -1,7 +1,7 @@
 <br />
 
 > [!IMPORTANT]
-> [Vote on our poll to decide which syntax to use](https://github.com/arthurfiorette/proposal-safe-assignment-operator/issues/10)
+> [Vote on our poll to decide which syntax to use](https://github.com/arthurfiorette/proposal-safe-assignment-operator/issues/4)
 
 
 <br />
