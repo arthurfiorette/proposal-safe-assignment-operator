@@ -380,6 +380,8 @@ try {
 } catch {}
 ```
 
+Complete discussion about this topic at https://github.com/arthurfiorette/proposal-safe-assignment-operator/issues/13 if the reader is interested.
+
 <br />
 
 ## Polyfilling
