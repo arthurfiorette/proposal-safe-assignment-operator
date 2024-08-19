@@ -14,7 +14,7 @@ Function.prototype[Symbol.result] = function (...args) {
   } catch (error) {
     // throw undefined would break the pattern of destructuring the result type.
     // in [error, data], both error and data would be undefined
-    return [error || new Error("Thrown error is falsy")]
+    return [error ?? new Error("Thrown error is nullish"), undefined]
   }
 }
 
@@ -23,6 +23,6 @@ Promise.prototype[Symbol.result] = async function () {
     const result = await this
     return [null, result]
   } catch (error) {
-    return [error || new Error("Thrown error is falsy")]
+    return [error ?? new Error("Thrown error is nullish"), undefined]
   }
 }

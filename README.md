@@ -13,7 +13,7 @@
 
 <br />
 
-This proposal introduces a new operator, `?=` _(Safe Assignment)_, which simplifies error handling by transforming the result of a function into a tuple. If the function throws an error, the operator returns `[error, null]`; if the function executes successfully, it returns `[null, result]`. This operator is compatible with promises, async functions, and any value that implements the [`Symbol.result`](#symbolresult) method.
+This proposal introduces a new operator, `?=` _(Safe Assignment)_, which simplifies error handling by transforming the result of a function into a tuple. If the function throws an error, the operator returns `[error, undefined]`; if the function executes successfully, it returns `[null, result]`. This operator is compatible with promises, async functions, and any value that implements the [`Symbol.result`](#symbolresult) method.
 
 For example, when performing I/O operations or interacting with Promise-based APIs, errors can occur unexpectedly at runtime. Neglecting to handle these errors can lead to unintended behavior and potential security vulnerabilities.
 
@@ -87,21 +87,21 @@ async function getData() {
     "https://api.example.com/data"
   )
 
-  if (requestError) {
+  if (requestError !== null) {
     handleRequestError(requestError)
     return
   }
 
   const [parseError, json] ?= await response.json()
 
-  if (parseError) {
+  if (parseError !== null) {
     handleParseError(parseError)
     return
   }
 
   const [validationError, data] ?= validationSchema.parse(json)
 
-  if (validationError) {
+  if (validationError !== null) {
     handleValidationError(validationError)
     return
   }
@@ -130,7 +130,7 @@ Any object that implements the `Symbol.result` method can be used with the `?=` 
 function example() {
   return {
     [Symbol.result]() {
-      return [new Error("123"), null]
+      return [new Error("123"), undefined]
     },
   }
 }
@@ -154,7 +154,7 @@ The `?=` operator invokes the `Symbol.result` method on the object or function o
 ```ts
 const obj = {
   [Symbol.result]() {
-    return [new Error("Error"), null]
+    return [new Error("Error"), undefined]
   },
 }
 
@@ -171,7 +171,7 @@ const [error, data] ?= action(argument)
 // const [error, data] = action[Symbol.result](argument)
 ```
 
-The result should conform to the format `[error, null | undefined]` or `[null, data]`.
+The result should conform to the format `[error, undefined]` or `[null, data]`.
 
 #### Usage in Functions
 
@@ -181,7 +181,7 @@ When the `?=` operator is used within a function, all parameters passed to that 
 declare function action(argument: string): string
 
 const [error, data] ?= action(argument1, argument2, ...)
-// const [error, data] = action[Symbol.result](argument, argument2, ...)
+// const [error, data] = action[Symbol.result](argument1, argument2, ...)
 ```
 
 #### Usage with Objects
@@ -199,7 +199,7 @@ const [error, data] ?= obj
 
 ### Recursive Handling
 
-The `[error, null]` tuple is generated upon the first error encountered. However, if the `data` in a `[null, data]` tuple also implements a `Symbol.result` method, it will be invoked recursively.
+The `[error, undefined]` tuple is generated upon the first error encountered. However, if the `data` in a `[null, data]` tuple also implements a `Symbol.result` method, it will be invoked recursively.
 
 ```ts
 const obj = {
@@ -208,7 +208,7 @@ const obj = {
       null,
       {
         [Symbol.result]() {
-          return [new Error("Error"), null]
+          return [new Error("Error"), undefined]
         },
       },
     ]
@@ -286,7 +286,7 @@ try {
 await using [error, a] ?= b
 ```
 
-The `using` management flow is applied only when `error` is `null` or `undefined`, and `a` is truthy and has a `Symbol.dispose` method.
+The `using` management flow is applied only when `error` is `null`, and `a` is defined and has a `Symbol.dispose` method.
 
 <br />
 
@@ -440,7 +440,7 @@ is equivalent to:
 ```ts
 const [error, data] ?= expression
 
-if (error) {
+if (error !== null) {
   // catch code
 } else {
   // try code
@@ -500,7 +500,7 @@ try {
 const [error, data] ?= action()
 
 try {
-  if (error) {
+  if (error !== null) {
     // catch errors
   } else {
     // try code

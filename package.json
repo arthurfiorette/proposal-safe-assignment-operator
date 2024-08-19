@@ -15,7 +15,9 @@
   "license": "MIT",
   "devDependencies": {
     "@tc39/ecma262-biblio": "^2.1.2753",
-    "ecmarkup": "^19.0.0"
+    "@types/node": "^22.4.1",
+    "ecmarkup": "^19.0.0",
+    "typescript": "^5.5.4"
   },
   "engines": {
     "node": ">= 12"
