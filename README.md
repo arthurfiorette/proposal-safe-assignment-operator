@@ -530,7 +530,7 @@ This proposal is in its early stages, and we welcome your input to help refine i
 
 ## Inspiration
 
-- [This tweet from @LaraVerou](https://x.com/LeaVerou/status/1819381809773216099)
+- [This tweet from @LeaVerou](https://x.com/LeaVerou/status/1819381809773216099)
 - [Effect TS Error Management](https://effect.website/docs/guides/error-management)
 - The [`tuple-it`](https://www.npmjs.com/package/tuple-it) npm package, which introduces a similar concept but modifies the `Promise` and `Function` prototypes—an approach that is less ideal.
 - The frequent oversight of error handling in JavaScript code.
