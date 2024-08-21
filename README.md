@@ -1,7 +1,7 @@
 <br />
 
 > [!IMPORTANT]
-> [Vote on our poll to decide which syntax to use](https://github.com/arthurfiorette/proposal-safe-assignment-operator/issues/4)
+> 🗓️ [Let's talk about this proposal on 25/Aug 16 UTC!](https://github.com/arthurfiorette/proposal-safe-assignment-operator/issues/28)
 
 
 <br />
