@@ -12,14 +12,18 @@ interface Function {
   [Symbol.result]<T extends (...args: any[]) => any>(
     this: T,
     ...args: Parameters<T>
-  ): ReturnType<T> extends Promise<infer R>
-    ? Promise<
-        | readonly [NonNullable<unknown> | Error, undefined]
-        | readonly [null, Awaited<R>]
-      >
-    :
-        | readonly [NonNullable<unknown> | Error, undefined]
-        | readonly [null, ReturnType<T>]
+  ): [ReturnType<T>] extends [never]
+    ? readonly [NonNullable<unknown> | Error, never]
+    : ReturnType<T> extends Promise<never>
+      ? readonly [NonNullable<unknown> | Error, never]
+      : ReturnType<T> extends Promise<infer R>
+        ? Promise<
+            | readonly [NonNullable<unknown> | Error, undefined]
+            | readonly [null, Awaited<R>]
+          >
+        :
+            | readonly [NonNullable<unknown> | Error, undefined]
+            | readonly [null, ReturnType<T>]
 }
 
 interface Promise<T = unknown> {
