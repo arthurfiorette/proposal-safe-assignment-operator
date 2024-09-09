@@ -14,14 +14,14 @@
 
 <br />
 
-This proposal introduces a new operator, `?=` _(Safe Assignment)_, which simplifies error handling by transforming the result of a function into a tuple. If the function throws an error, the operator returns `[error, null]`; if the function executes successfully, it returns `[null, result]`. This operator is compatible with promises, async functions, and any value that implements the [`Symbol.result`](#symbolresult) method.
+This proposal introduces a new operator, `= try` _(Safe Assignment)_, which simplifies error handling by transforming the result of a function into a tuple. If the function throws an error, the operator returns `[error, null]`; if the function executes successfully, it returns `[null, result]`. This operator is compatible with promises, async functions, and any value that implements the [`Symbol.result`](#symbolresult) method.
 
 For example, when performing I/O operations or interacting with Promise-based APIs, errors can occur unexpectedly at runtime. Neglecting to handle these errors can lead to unintended behavior and potential security vulnerabilities.
 
 <br />
 
 ```ts
-const [error, response] ?= await fetch("https://arthur.place")
+const [error, response] = try await fetch("https://arthur.place")
 ```
 
 <hr />
@@ -30,7 +30,7 @@ const [error, response] ?= await fetch("https://arthur.place")
 - [Motivation](#motivation)
 - [Proposed Features](#proposed-features)
   - [`Symbol.result`](#symbolresult)
-  - [The Safe Assignment Operator (`?=`)](#the-safe-assignment-operator-)
+  - [The Safe Assignment Operator (`= try`)](#the-safe-assignment-operator-)
     - [Usage in Functions](#usage-in-functions)
     - [Usage with Objects](#usage-with-objects)
   - [Recursive Handling](#recursive-handling)
@@ -39,7 +39,7 @@ const [error, response] ?= await fetch("https://arthur.place")
 - [Try/Catch Is Not Enough](#trycatch-is-not-enough)
 - [Why Not `data` First?](#why-not-data-first)
 - [Polyfilling](#polyfilling)
-- [Using `?=` with Functions and Objects Without `Symbol.result`](#using--with-functions-and-objects-without-symbolresult)
+- [Using `= try` with Functions and Objects Without `Symbol.result`](#using--with-functions-and-objects-without-symbolresult)
 - [Comparison](#comparison)
 - [Similar Prior Art](#similar-prior-art)
 - [What This Proposal Does Not Aim to Solve](#what-this-proposal-does-not-aim-to-solve)
@@ -80,11 +80,11 @@ The issue with the above function is that it can fail silently, potentially cras
 3. `parse` can throw.
 4. Each of these can produce multiple types of errors.
 
-To address this, we propose the adoption of a new operator, `?=`, which facilitates more concise and readable error handling.
+To address this, we propose the adoption of a new operator, `= try`, which facilitates more concise and readable error handling.
 
 ```ts
 async function getData() {
-  const [requestError, response] ?= await fetch(
+  const [requestError, response] = try await fetch(
     "https://api.example.com/data"
   )
 
@@ -93,14 +93,14 @@ async function getData() {
     return
   }
 
-  const [parseError, json] ?= await response.json()
+  const [parseError, json] = try await response.json()
 
   if (parseError) {
     handleParseError(parseError)
     return
   }
 
-  const [validationError, data] ?= validationSchema.parse(json)
+  const [validationError, data] = try validationSchema.parse(json)
 
   if (validationError) {
     handleValidationError(validationError)
@@ -125,7 +125,7 @@ This proposal aims to introduce the following features:
 
 ### `Symbol.result`
 
-Any object that implements the `Symbol.result` method can be used with the `?=` operator.
+Any object that implements the `Symbol.result` method can be used with the `= try` operator.
 
 ```ts
 function example() {
@@ -136,7 +136,7 @@ function example() {
   }
 }
 
-const [error, result] ?= example() // Function.prototype also implements Symbol.result
+const [error, result] = try example() // Function.prototype also implements Symbol.result
 // const [error, result] = example[Symbol.result]()
 
 // error is Error('123')
@@ -148,9 +148,9 @@ The `Symbol.result` method must return a tuple, where the first element represen
 
 <br />
 
-### The Safe Assignment Operator (`?=`)
+### The Safe Assignment Operator (`= try`)
 
-The `?=` operator invokes the `Symbol.result` method on the object or function on the right side of the operator, ensuring that errors and results are consistently handled in a structured manner.
+The `= try` operator invokes the `Symbol.result` method on the object or function on the right side of the operator, ensuring that errors and results are consistently handled in a structured manner.
 
 ```ts
 const obj = {
@@ -159,7 +159,7 @@ const obj = {
   },
 }
 
-const [error, data] ?= obj
+const [error, data] = try obj
 // const [error, data] = obj[Symbol.result]()
 ```
 
@@ -168,7 +168,7 @@ function action() {
   return 'data'
 }
 
-const [error, data] ?= action(argument)
+const [error, data] = try action(argument)
 // const [error, data] = action[Symbol.result](argument)
 ```
 
@@ -176,23 +176,23 @@ The result should conform to the format `[error, null | undefined]` or `[null, d
 
 #### Usage in Functions
 
-When the `?=` operator is used within a function, all parameters passed to that function are forwarded to the `Symbol.result` method.
+When the `= try` operator is used within a function, all parameters passed to that function are forwarded to the `Symbol.result` method.
 
 ```ts
 declare function action(argument: string): string
 
-const [error, data] ?= action(argument1, argument2, ...)
+const [error, data] = try action(argument1, argument2, ...)
 // const [error, data] = action[Symbol.result](argument, argument2, ...)
 ```
 
 #### Usage with Objects
 
-When the `?=` operator is used with an object, no parameters are passed to the `Symbol.result` method.
+When the `= try` operator is used with an object, no parameters are passed to the `Symbol.result` method.
 
 ```ts
 declare const obj: { [Symbol.result]: () => any }
 
-const [error, data] ?= obj
+const [error, data] = try obj
 // const [error, data] = obj[Symbol.result]()
 ```
 
@@ -216,7 +216,7 @@ const obj = {
   },
 }
 
-const [error, data] ?= obj
+const [error, data] = try obj
 // const [error, data] = obj[Symbol.result]()
 
 // error is  Error('string')
@@ -234,18 +234,18 @@ These cases may involve 0 to 2 levels of nested objects with `Symbol.result` met
 
 ### Promises
 
-A `Promise` is the only other implementation, besides `Function`, that can be used with the `?=` operator.
+A `Promise` is the only other implementation, besides `Function`, that can be used with the `= try` operator.
 
 ```ts
 const promise = getPromise()
-const [error, data] ?= await promise
+const [error, data] = try await promise
 // const [error, data] = await promise[Symbol.result]()
 ```
 
-You may have noticed that `await` and `?=` can be used together, and that's perfectly fine. Due to the [Recursive Handling](#recursive-handling) feature, there are no issues with combining them in this way.
+You may have noticed that `await` and `= try` can be used together, and that's perfectly fine. Due to the [Recursive Handling](#recursive-handling) feature, there are no issues with combining them in this way.
 
 ```ts
-const [error, data] ?= await getPromise()
+const [error, data] = try await getPromise()
 // const [error, data] = await getPromise[Symbol.result]()
 ```
 
@@ -261,9 +261,9 @@ The execution will follow this order:
 
 ### `using` Statement
 
-The `using` or `await using` statement should also work with the `?=` operator. It will perform similarly to a standard `using x = y` statement.
+The `using` or `await using` statement should also work with the `= try` operator. It will perform similarly to a standard `using x = y` statement.
 
-Note that errors thrown when disposing of a resource are not caught by the `?=` operator, just as they are not handled by other current features.
+Note that errors thrown when disposing of a resource are not caught by the `= try` operator, just as they are not handled by other current features.
 
 ```ts
 try {
@@ -273,7 +273,7 @@ try {
 }
 
 // now becomes
-using [error, a] ?= b
+using [error, a] = try b
 
 // or with async
 
@@ -284,7 +284,7 @@ try {
 }
 
 // now becomes
-await using [error, a] ?= b
+await using [error, a] = try b
 ```
 
 The `using` management flow is applied only when `error` is `null` or `undefined`, and `a` is truthy and has a `Symbol.dispose` method.
@@ -350,24 +350,24 @@ async function readData(filename) {
 
 In Go, the convention is to place the data variable first, and you might wonder why we don't follow the same approach in JavaScript. In Go, this is the standard way to call a function. However, in JavaScript, we already have the option to use `const data = fn()` and choose to ignore the error, which is precisely the issue we are trying to address.
 
-If someone is using `?=` as their assignment operator, it is because they want to ensure that they handle errors and avoid forgetting them. Placing the data first would contradict this principle, as it prioritizes the result over error handling.
+If someone is using `= try` as their assignment operator, it is because they want to ensure that they handle errors and avoid forgetting them. Placing the data first would contradict this principle, as it prioritizes the result over error handling.
 
 ```ts
 // ignores errors!
 const data = fn()
 
 // Look how simple it is to forget to handle the error
-const [data] ?= fn()
+const [data] = try fn()
 
 // This is the way to go
-const [error, data] ?= fn()
+const [error, data] = try fn()
 ```
 
 If you want to suppress the error (which is **different** from ignoring the possibility of a function throwing an error), you can simply do the following:
 
 ```ts
 // This suppresses the error (ignores it and doesn't re-throw it)
-const [, data] ?= fn()
+const [, data] = try fn()
 ```
 
 This approach is much more explicit and readable because it acknowledges that there might be an error, but indicates that you do not care about it.
@@ -389,37 +389,37 @@ Complete discussion about this topic at https://github.com/arthurfiorette/propos
 
 This proposal can be polyfilled using the code provided at [`polyfill.js`](./polyfill.js).
 
-However, the `?=` operator itself cannot be polyfilled directly. When targeting older JavaScript environments, a post-processor should be used to transform the `?=` operator into the corresponding `[Symbol.result]` calls.
+However, the `= try` operator itself cannot be polyfilled directly. When targeting older JavaScript environments, a post-processor should be used to transform the `= try` operator into the corresponding `[Symbol.result]` calls.
 
 ```ts
-const [error, data] ?= await asyncAction(arg1, arg2)
+const [error, data] = try await asyncAction(arg1, arg2)
 // should become
 const [error, data] = await asyncAction[Symbol.result](arg1, arg2)
 ```
 
 ```ts
-const [error, data] ?= action()
+const [error, data] = try action()
 // should become
 const [error, data] = action[Symbol.result]()
 ```
 
 ```ts
-const [error, data] ?= obj
+const [error, data] = try obj
 // should become
 const [error, data] = obj[Symbol.result]()
 ```
 
 <br />
 
-## Using `?=` with Functions and Objects Without `Symbol.result`
+## Using `= try` with Functions and Objects Without `Symbol.result`
 
-If the function or object does not implement a `Symbol.result` method, the `?=` operator should throw a `TypeError`.
+If the function or object does not implement a `Symbol.result` method, the `= try` operator should throw a `TypeError`.
 
 <br />
 
 ## Comparison
 
-The `?=` operator and the `Symbol.result` proposal do not introduce new logic to the language. In fact, everything this proposal aims to achieve can already be accomplished with current, though _verbose and error-prone_, language features.
+The `= try` operator and the `Symbol.result` proposal do not introduce new logic to the language. In fact, everything this proposal aims to achieve can already be accomplished with current, though _verbose and error-prone_, language features.
 
 ```ts
 try {
@@ -439,7 +439,7 @@ promise // try expression
 is equivalent to:
 
 ```ts
-const [error, data] ?= expression
+const [error, data] = try expression
 
 if (error) {
   // catch code
@@ -498,7 +498,7 @@ try {
 
 // Needs to be done as follows
 
-const [error, data] ?= action()
+const [error, data] = try action()
 
 try {
   if (error) {
