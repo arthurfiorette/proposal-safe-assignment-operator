@@ -1,8 +1,9 @@
 <br />
 
-> [!IMPORTANT]
-> 🗓️ [Let's talk about this proposal on 25/Aug 16 UTC!](https://github.com/arthurfiorette/proposal-safe-assignment-operator/issues/28)
-
+> [!CAUTION]
+> This proposal will change to `try-expressions` as its a more idiomatic apporach to this problem. Read more on [#4](https://github.com/arthurfiorette/proposal-safe-assignment-operator/issues/4) and [#5](https://github.com/arthurfiorette/proposal-safe-assignment-operator/issues/5).
+> 
+> Help on its rewriting is needed :)
 
 <br />
 
